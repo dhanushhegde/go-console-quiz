@@ -7,6 +7,7 @@ import (
 	// "log"
 	// "io"
 	"flag"
+	"time"
 )
 
 
@@ -15,10 +16,16 @@ func exit(msg string) {
 	os.Exit(1)
 }
 
+type question struct{
+	question string
+	answer string
+}
+
 func main() {
 	fileName:= flag.String("fileName","problems","Enter file name")
 	*fileName=*fileName+".csv"
 	flag.Parse()
+
 	file, err := os.Open(*fileName)
 	if err != nil {
 		// log.Fatal(err)
@@ -31,17 +38,43 @@ func main() {
 		exit(fmt.Sprintf("Failed to parse csv file"))
 	}
 
-	// fmt.Println(r)
-	fmt.Printf("%T\n",r)
-	var correctCount int
-	for i,v:=range r{
-		var a string
-	// fmt.Printf("This is the question %s and this is the answer %s \n",v[0],v[1])	
-	fmt.Printf("Question No %v: %v is ",i,v[0])
-	fmt.Scan(&a)
-	if(a==v[1]){
-		correctCount++
-	}
-	}
+	questions:=getQuestions(r)
+	correctCount:=askQuestions(questions)
+	
 	fmt.Printf("You have answered %v questions correctly.",correctCount)
+}
+
+func getQuestions(data[][]string) []question{
+	q:=make([]question,len(data))
+	for i,v:=range data {
+		q[i]=question{question:v[0],answer:v[1]}
+	}
+	return q
+}
+
+func askQuestions(questions []question) int{
+	var correctCount int
+	an := make(chan string) 
+	timer:=time.NewTimer(30*time.Second)
+	
+	questionsloop:for i,v:= range questions{
+	go func(){
+	var a string
+	fmt.Printf("Question No %v: %v is ",i+1,v.question)
+	fmt.Scan(&a)
+	an<-a
+	}()
+
+	select{
+	case <- timer.C:
+		fmt.Println()
+			break questionsloop;
+	case answer:=<-an:
+		if answer==v.answer{
+			correctCount++
+		}
+	}
+	} 
+	
+	return correctCount
 }
